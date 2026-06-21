@@ -1,0 +1,244 @@
+% Rapport de soutenance - Inspection Platform
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{array}
+\geometry{margin=2.5cm}
+\title{Rapport de Soutenance - Inspection Platform}
+\author{Équipe CNSS}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+Ce document présente l’analyse technique du projet \textit{Inspection Platform}, une application web de gestion des dossiers d’inspection de la CNSS. Ce projet combine un backend Django REST API et un frontend React pour permettre aux inspecteurs, directeurs et administrateurs de consulter des dossiers, d’assigner des inspecteurs, de suivre l’état des dossiers et de gérer les notifications.
+
+L'objectif de la soutenance est de démontrer la compréhension de l'architecture, le flux de données, la structure de la base de données et les fonctionnalités principales du système.
+
+\section{Architecture}
+Le système est construit suivant une architecture \textbf{client-serveur} classique.
+
+\subsection{Vue globale}
+Le backend est une application Django avec Django REST Framework et plusieurs applications métiers :
+\begin{itemize}
+    \item \texttt{users} : gestion des utilisateurs et authentification JWT.
+    \item \texttt{dossiers} : gestion des dossiers d’inspection et des actions métier.
+    \item \texttt{comments} : gestion des commentaires et des notifications.
+    \item \texttt{workflow} : définition de la logique de changement de statut.
+    \item \texttt{analytics} : reporting et indicateurs de performance.
+    \item \texttt{etl} : import et extraction des données.
+\end{itemize}
+
+Le frontend est une application React + TypeScript, servie depuis le dossier \texttt{frontend}. Il communique avec l’API backend via des requêtes HTTP (fetch).
+
+\subsection{Séparation des responsabilités}
+\begin{itemize}
+    \item Backend : logique métier, sécurité, API, accès base de données.
+    \item Frontend : interface utilisateur, authentification, affichage des listes et formulaires.
+    \item Base de données : persistance des dossiers, utilisateurs, commentaires et états de notification.
+\end{itemize}
+
+\section{UML description}
+Le projet ne comporte pas de diagrammes graphiques intégrés, mais on peut décrire le modèle UML de façon textuelle.
+
+\subsection{Diagramme de classes textuel}
+\begin{itemize}
+    \item \textbf{User} : fourni par Django, lié à \texttt{UserProfile} via \texttt{profile}.
+    \item \textbf{UserProfile} : rôle métier (INSPECTEUR, DIRECTEUR, ADMIN), région, service, badge.
+    \item \textbf{Dossier} : entité centrale, contient les champs métier, le quadrant, le statut, l’inspecteur assigné, et les scores.
+    \item \textbf{Comment} : associé à un Dossier, contient le texte, le type (OBSERVATION, ALERTE, DECISION), et l’état lu/non lu.
+\end{itemize}
+
+Relations principales :
+\begin{itemize}
+    \item Un \texttt{Dossier} est lié à un \texttt{User} inspecteur (relation \texttt{ForeignKey}).
+    \item Un \texttt{Comment} est lié à un \texttt{Dossier} et à un \texttt{User} auteur.
+    \item La notification est implémentée via des commentaires de type \texttt{ALERTE}.
+\end{itemize}
+
+\section{API design}
+L'API est organisée autour de plusieurs points d’accès.
+
+\subsection{Authentification}
+\begin{itemize}
+    \item \texttt{POST /api/auth/token/} : génération d'un token JWT à partir du nom d'utilisateur et mot de passe.
+    \item \texttt{POST /api/auth/token/refresh/} : renouvellement du token d’accès.
+\end{itemize}
+
+Le token inclut le rôle de l'utilisateur, utilisé par le frontend pour afficher les vues adaptées.
+
+\subsection{Dossiers}
+\begin{itemize}
+    \item \texttt{GET /api/dossiers/} : liste paginée des dossiers, avec filtres et recherche.
+    \item \texttt{GET /api/dossiers/{id}/} : détail d’un dossier.
+    \item \texttt{POST /api/dossiers/{id}/assigner-inspecteur/} : assignation d'un inspecteur à un dossier.
+    \item \texttt{POST /api/dossiers/{id}/changer-statut/} : modification du statut.
+    \item \texttt{POST /api/dossiers/{id}/marquer-traite/} : marquer un dossier comme traité.
+    \item \texttt{GET /api/dossiers/mes-stats/} : statistiques des dossiers de l’inspecteur connecté.
+\end{itemize}
+
+\subsection{Commentaires et notifications}
+\begin{itemize}
+    \item \texttt{GET /api/comments/} : liste des commentaires.
+    \item \texttt{GET /api/dossiers/{id_emp_hash}/comments/} : liste des commentaires d’un dossier.
+    \item \texttt{POST /api/dossiers/{id_emp_hash}/comments/} : création d’un commentaire lié à un dossier.
+    \item \texttt{GET /api/notifications/} : liste des notifications de type \texttt{ALERTE} pour l’inspecteur.
+    \item \texttt{POST /api/notifications/} : marquer plusieurs notifications comme lues.
+    \item \texttt{POST /api/notifications/{id}/read/} : marquer une notification comme lue.
+\end{itemize}
+
+\section{Database schema}
+La base de données principale contient plusieurs tables clés.
+
+\subsection{Table \texttt{auth_user}}
+Gère les utilisateurs standards Django.
+
+\subsection{Table \texttt{users_userprofile}}
+\begin{itemize}
+    \item \texttt{user} : clé étrangère vers \texttt{auth_user}.
+    \item \texttt{role} : rôle métier.
+    \item \texttt{region}, \texttt{service}, \texttt{badge_id}.
+\end{itemize}
+
+\subsection{Table \texttt{dossiers_dossier}}
+Champs principaux :
+\begin{itemize}
+    \item \texttt{id_emp_hash}, \texttt{forme_nom}, \texttt{emp_secteur}, \texttt{reg_key}.
+    \item Données de risque : \texttt{score_global}, \texttt{niveau_risque}, \texttt{score_anomalie}, \texttt{niveau_anomalie}.
+    \item \texttt{quadrant}, \texttt{statut}, \texttt{priorite}, \texttt{traite}.
+    \item \texttt{inspecteur} : clé étrangère vers \texttt{auth_user}.
+    \item JSON métiers : \texttt{regles_declenchees}, \texttt{interactions_detectees}.
+\end{itemize}
+
+\subsection{Table \texttt{comments_comment}}
+Champs clés :
+\begin{itemize}
+    \item \texttt{dossier} : clé étrangère vers \texttt{dossiers_dossier}.
+    \item \texttt{auteur} : clé étrangère vers \texttt{auth_user}.
+    \item \texttt{contenu}, \texttt{type_commentaire}.
+    \item \texttt{created_at}, \texttt{is_interne}.
+    \item \texttt{is_read}, \texttt{read_at} : état de lecture pour les notifications.
+\end{itemize}
+
+\section{Fonctionnalités principales}
+Le projet supporte les fonctionnalités suivantes.
+
+\subsection{Filtrage des dossiers}
+Le frontend utilise de nombreux filtres : recherche, statut, niveau de risque, quadrant, inspecteur, traité/non traité. Le backend traduit ces filtres en requêtes Django optimisées, y compris un alias pour les valeurs de quadrant.
+
+\subsection{Assignation d’inspecteur}
+Seuls les rôles \texttt{DIRECTEUR} et \texttt{ADMIN} peuvent assigner un inspecteur. L’assignation met à jour le dossier, crée un commentaire de type \texttt{ALERTE} et tente d’envoyer un email via la configuration Django.
+
+\subsection{Fonctions métier principales}
+Voici trois fonctions backend qui traduisent la logique métier sans être des endpoints eux-mêmes.
+\begin{itemize}
+    \item \textbf{Adaptation du filtre de quadrant} : dans \texttt{dossiers/filters.py}, la méthode \texttt{DossierFilter.filter_quadrant} convertit les codes envoyés par le frontend en valeurs stockées dans la base de données.
+    \item \textbf{Assignation d'un inspecteur} : dans \texttt{dossiers/views.py}, la méthode \texttt{DossierViewSet.assigner_inspecteur} valide le rôle du demandeur, met à jour le dossier, crée une alerte interne et déclenche l'envoi d'un email.
+    \item \textbf{Marquer une notification comme lue} : dans \texttt{comments/views.py}, la méthode \texttt{NotificationReadView.post} met \texttt{is_read=true} et enregistre \texttt{read_at} pour la notification.
+\end{itemize}
+
+Ces fonctions montrent l'articulation entre le backend et le frontend : le frontend construit des paramètres et envoie des actions, tandis que le backend applique les règles métier et assure la persistance.
+
+\subsection{Notifications}
+Les notifications sont stockées comme des commentaires de type \texttt{ALERTE}. Elles sont exposées via un endpoint dédié, et l'utilisateur peut marquer les notifications comme lues.
+
+\subsection{Tableau de bord}
+Le tableau de bord affiche :
+\begin{itemize}
+    \item Pour les inspecteurs : statistiques de dossiers, alertes critiques, liste de dossiers prioritaires.
+    \item Pour les directeurs/admins : indicateurs globaux, répartition par région et par inspecteur.
+\end{itemize}
+
+\section{Outils et structure essentielle}
+
+Cette section présente les outils principaux et les fichiers clés du projet.
+
+\subsection{Outils principaux}
+
+Le projet utilise :
+\begin{itemize}
+    \item Django et Django REST Framework pour le backend.
+    \item JWT via \texttt{rest_framework_simplejwt} pour l'authentification.
+    \item \texttt{django_filters} pour le filtrage avancé des dossiers.
+    \item React, TypeScript et Vite pour le frontend.
+\end{itemize}
+
+\subsection{Fichiers essentiels backend}
+
+\begin{itemize}
+    \item \texttt{config/settings.py} : configuration générale, base de données, authentification, CORS.
+    \item \texttt{config/urls.py} : routes API principales.
+    \item \texttt{dossiers/views.py} : logique des dossiers, assignation et actions sur les dossiers.
+    \item \texttt{dossiers/serializers.py} : sérialisation des objets Dossier et des commentaires.
+    \item \texttt{comments/views.py} : gestion des commentaires et des notifications.
+    \item \texttt{comments/serializers.py} : format des réponses de commentaires.
+    \item \texttt{comments/models.py} : modèle de notification/commentaire.
+    \item \texttt{dossiers/filters.py} : règles de filtrage pour la recherche de dossiers.
+\end{itemize}
+
+\subsection{Fichiers essentiels frontend}
+
+\begin{itemize}
+    \item \texttt{frontend/src/App.tsx} : configuration des routes et du contexte d'authentification.
+    \item \texttt{frontend/src/api/api.ts} : service central de requêtes HTTP vers l'API.
+    \item \texttt{frontend/src/context/AuthContext.tsx} : gestion des tokens et du rôle utilisateur.
+    \item \texttt{frontend/src/pages/DashboardPage.tsx} : affichage du tableau de bord et notifications.
+    \item \texttt{frontend/src/pages/DossiersPage.tsx} : interface de liste des dossiers et filtres.
+\end{itemize}
+
+\subsection{Objectif de cette section}
+
+Cette section se concentre sur le code principal de notre fonctionnalité : création d'API, gestion des dossiers, notifications et interface utilisateur. Elle évite les détails des outils secondaires ou des dépendances non liées directement au cœur du projet.
+
+\section{Flux end-to-end}
+Ce flux décrit le parcours assignation → notification → lecture.
+
+\subsection{Étape 1 : Assignation}
+Un directeur appelle le endpoint \texttt{POST /api/dossiers/{id}/assigner-inspecteur/} avec \texttt{inspecteur_id} ou \texttt{inspecteur_username}.
+
+Le backend :
+\begin{enumerate}
+    \item valide le rôle du demandeur.
+    \item recherche et vérifie l’inspecteur.
+    \item met à jour le champ \texttt{inspecteur} du dossier.
+    \item crée un commentaire de type \texttt{ALERTE} lié au dossier.
+    \item envoie éventuellement un email à l’inspecteur via \texttt{send_mail}.
+\end{enumerate}
+
+\subsection{Étape 2 : Notification}
+Une alerte est stockée dans la table \texttt{comments_comment} avec \texttt{type_commentaire='ALERTE'}.
+
+L’inspecteur peut consulter
+\texttt{GET /api/notifications/} pour récupérer ses notifications. Le frontend affiche ces notifications avec des liens vers les dossiers.
+
+\subsection{Étape 3 : Lecture}
+L’utilisateur peut marquer une notification comme lue en appelant :
+\begin{itemize}
+    \item \texttt{POST /api/notifications/{id}/read/}
+    \item ou \texttt{POST /api/notifications/} avec une liste d’identifiants.
+\end{itemize}
+
+Le backend met à jour \texttt{is_read=true} et \texttt{read_at} pour persister l’état de lecture.
+
+\section{Conclusion}
+Le projet Inspection Platform est une application web modulaire et moderne. Il utilise Django REST Framework pour la logique backend, React pour l’interface utilisateur, et un modèle de notifications intégré via les commentaires.
+
+Les points forts sont :
+\begin{itemize}
+    \item architecture claire séparant backend et frontend.
+    \item API REST bien structurée avec authentification JWT.
+    \item système de notification persistante et lecture marquée.
+    \item filtres métiers robustes et écrans adaptés aux rôles.
+\end{itemize}
+
+Pour aller plus loin, on peut ajouter des tests automatisés, un modèle de notification dédié et un service d’envoi d’emails en tâche asynchrone.
+
+\end{document}
