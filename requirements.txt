@@ -1,0 +1,23 @@
+Django==5.2.15
+djangorestframework==3.17.1
+djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.29.0
+django-filter==25.2
+django-cors-headers==4.9.0
+sqlparse==0.5.5
+six==1.17.0
+python-dotenv==1.0.0
+
+# Database
+psycopg2-binary==2.9.9
+
+# Production Server
+gunicorn==21.2.0
+whitenoise==6.6.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Utilities
+requests==2.31.0
+python-dateutil==2.8.2

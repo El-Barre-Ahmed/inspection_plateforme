@@ -1,0 +1,11 @@
+venv
+.env
+__pycache__/
+db.sqlite3
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+deploy.sh
