@@ -8,4 +8,12 @@ db.sqlite3
 *.log
 *.sqlite3
 *.db
+
+# Node / frontend
+frontend/node_modules/
+frontend/.env*
+frontend/dist/
+
+# Local development artifacts
+.DS_Store
 deploy.sh
