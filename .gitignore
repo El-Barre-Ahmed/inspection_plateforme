@@ -1,5 +1,5 @@
 venv
-.env
+.env*
 __pycache__/
 db.sqlite3
 *.pyc
@@ -16,4 +16,9 @@ frontend/dist/
 
 # Local development artifacts
 .DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+*.pem
 deploy.sh
