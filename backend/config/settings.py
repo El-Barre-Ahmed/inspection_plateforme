@@ -3,7 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
-import dj_database_url
+import dj-database_url
 
 # Chemin de base du projet
 BASE_DIR = Path(__file__).resolve().parent.parent
