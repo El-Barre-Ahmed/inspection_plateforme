@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+import dj_database_url
 
 # Chemin de base du projet
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # Doit être placé le plus haut possible
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # <-- Ajouté pour Render (Static files)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -83,9 +85,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+
 # --- 4. BASE DE DONNÉES ---
-# Support SQLite (développement) et PostgreSQL (production)
-if os.getenv('DB_ENGINE') == 'django.db.backends.postgresql':
+# Support Render (DATABASE_URL), PostgreSQL local et SQLite (développement)
+if os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif os.getenv('DB_ENGINE') == 'django.db.backends.postgresql':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -96,7 +106,6 @@ if os.getenv('DB_ENGINE') == 'django.db.backends.postgresql':
             'PORT': os.getenv('DB_PORT', '5432'),
         }
     }
-    
 else:
     # SQLite par défaut pour développement
     DATABASES = {
@@ -105,7 +114,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    '''
+
 
 # --- 5. CONFIGURATION DJANGO REST FRAMEWORK (DRF) ---
 REST_FRAMEWORK = {
