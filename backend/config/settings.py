@@ -96,6 +96,7 @@ if os.getenv('DB_ENGINE') == 'django.db.backends.postgresql':
             'PORT': os.getenv('DB_PORT', '5432'),
         }
     }
+    
 else:
     # SQLite par défaut pour développement
     DATABASES = {
@@ -104,6 +105,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+    '''
 
 # --- 5. CONFIGURATION DJANGO REST FRAMEWORK (DRF) ---
 REST_FRAMEWORK = {
@@ -182,3 +184,13 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+#gmail_configuration
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")

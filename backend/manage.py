@@ -3,12 +3,9 @@
 import os
 import sys
 
-# Add backend to path so Django can find it
-backend_path = os.path.join(os.path.dirname(__file__), 'backend')
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
 
-if __name__ == '__main__':
+def main():
+    """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     try:
         from django.core.management import execute_from_command_line
@@ -19,3 +16,7 @@ if __name__ == '__main__':
             "forget to activate a virtual environment?"
         ) from exc
     execute_from_command_line(sys.argv)
+
+
+if __name__ == '__main__':
+    main()

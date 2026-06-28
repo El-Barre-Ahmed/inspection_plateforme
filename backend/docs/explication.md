@@ -401,6 +401,154 @@ class NotificationReadView(APIView):
 
 Lien frontend : dans `DashboardPage`, l'appel `POST /api/notifications/{id}/read/` met à jour l'état de la notification pour l'utilisateur.
 
+## Configuration Gmail pour l'envoi d'emails aux inspecteurs
+
+### Comment cela fonctionne ?
+
+Quand un **directeur ou administrateur assigne un inspecteur** à un dossier via l'API, le système :
+
+1. Met à jour le dossier dans la base de données
+2. Crée une **notification interne** (type `ALERTE`)
+3. **Envoie un email** de notification à l'inspecteur via Gmail
+
+### Code d'implémentation (backend)
+
+Dans [dossiers/views.py](dossiers/views.py), la méthode `assigner_inspecteur` :
+
+```python
+@action(detail=True, methods=['post'], url_path='assigner-inspecteur')
+def assigner_inspecteur(self, request, pk=None):
+    dossier = self.get_object()
+    inspecteur = User.objects.get(pk=request.data['inspecteur_id'])
+    
+    # 1. Mise à jour du dossier
+    dossier.inspecteur = inspecteur
+    dossier.save()
+    
+    # 2. Création de l'alerte interne
+    Comment.objects.create(
+        dossier=dossier,
+        auteur=request.user,
+        contenu=f"Vous avez été assigné au dossier #{dossier.id}",
+        type_commentaire='ALERTE',
+        is_interne=True
+    )
+    
+    # 3. Envoi d'email via Django send_mail
+    subject = f"Nouvelle assignation: Dossier #{dossier.id}"
+    message = f"Vous avez été assigné au dossier #{dossier.id} ({dossier.forme_nom})"
+    from_email = settings.DEFAULT_FROM_EMAIL
+    send_mail(subject, message, from_email, [inspecteur.email], fail_silently=True)
+```
+
+### Configuration de Gmail (dans le fichier `.env`)
+
+Pour utiliser **Gmail comme serveur SMTP**, ajoutez ces variables d'environnement :
+
+```env
+# Configuration Gmail pour l'envoi d'emails
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=votre-email@gmail.com
+EMAIL_HOST_PASSWORD=votre-mot-de-passe-app  # Voir étape 3 ci-dessous
+DEFAULT_FROM_EMAIL=votre-email@gmail.com
+```
+
+### Étapes concrètes pour configurer Gmail
+
+#### **Étape 1 : Créer un compte Gmail**
+- Créer un compte Gmail dédié au projet (ex: `inspection-platform@gmail.com`)
+
+#### **Étape 2 : Activer la vérification en deux étapes**
+1. Aller sur https://myaccount.google.com
+2. Cliquer sur **Sécurité** (menu de gauche)
+3. Cocher **Vérification en deux étapes**
+
+#### **Étape 3 : Créer un mot de passe d'application**
+1. Une fois la vérification activée, retourner à **Sécurité**
+2. Chercher **Mots de passe des applications** (ou "App passwords")
+3. Sélectionner **Mail** et **Windows/Linux/Mac**
+4. Google génère un mot de passe de 16 caractères (ex: `abcd efgh ijkl mnop`)
+5. **Copier ce mot de passe** dans `EMAIL_HOST_PASSWORD` du `.env`
+
+#### **Étape 4 : Ajouter la configuration dans `config/settings.py`**
+
+Le fichier settings.py **doit charger** les variables d'environnement :
+
+```python
+# Configuration email Django (lire depuis .env)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@inspection-platform.com')
+```
+
+#### **Étape 5 : Tester l'envoi d'email**
+
+Dans le shell Django :
+
+```python
+python manage.py shell
+>>> from django.core.mail import send_mail
+>>> send_mail('Test', 'Message de test', 'inspection-platform@gmail.com', ['inspecteur@example.com'])
+1  # Si retour = 1, succès !
+```
+
+### Flux complet : Assignation d'inspecteur
+
+```
+1. Frontend -> POST /api/dossiers/{id}/assigner-inspecteur/
+           avec { inspecteur_id: 42 }
+
+2. Backend (dossiers/views.py)
+   ├─ Récupère l'inspecteur
+   ├─ Met à jour dossier.inspecteur = 42
+   ├─ Crée Comment(type='ALERTE') -> Visible dans /api/notifications/
+   ├─ Construit email
+   └─ Appelle send_mail()
+        └─ Django se connecte à SMTP Gmail
+        └─ Envoie email à inspecteur.email
+        └─ L'inspecteur reçoit dans sa boîte Gmail
+
+3. Inspecteur reçoit email :
+   "Vous avez été assigné au dossier #123 (Entreprise XYZ)"
+   + lien direct vers le dossier
+```
+
+### Variables clés du système d'email
+
+| Variable | Rôle | Exemple |
+|----------|------|---------|
+| `EMAIL_BACKEND` | Driver d'envoi (SMTP, console, etc.) | `django.core.mail.backends.smtp.EmailBackend` |
+| `EMAIL_HOST` | Serveur SMTP | `smtp.gmail.com` |
+| `EMAIL_PORT` | Port SMTP | `587` (TLS) ou `465` (SSL) |
+| `EMAIL_HOST_USER` | Compte Gmail | `inspection-platform@gmail.com` |
+| `EMAIL_HOST_PASSWORD` | Mot de passe app (16 caractères) | `abcd efgh ijkl mnop` |
+| `DEFAULT_FROM_EMAIL` | Email d'envoi par défaut | `inspection-platform@gmail.com` |
+
+### Mode développement (console)
+
+Pour tester **sans envoyer vraiment d'emails**, modifier `.env` :
+
+```env
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+```
+
+Les emails s'afficheront dans la console du terminal au lieu d'être envoyés.
+
+### Résumé des 3 canaux de notification
+
+| Canal | Déclencheur | Destinataire | Persistance |
+|-------|-------------|--------------|-------------|
+| **Email (Gmail)** | Assignation d'inspecteur | `inspecteur.email` | Non (transient) |
+| **Alert (Comment)** | Assignation d'inspecteur | Création `Comment(type='ALERTE')` | Oui, en BDD |
+| **Notifications API** | Récupération via endpoint | `GET /api/notifications/` | Oui, avec `is_read` |
+
 ## Conclusion
 
 Le projet est structuré et prêt pour une démonstration.
@@ -409,7 +557,8 @@ Points forts :
 
 - séparation claire backend/frontend.
 - API REST avec authentification JWT.
-- système de notification persistant.
+- système de notification persistant (Commentaires/Alertes).
+- system d'email intégré (Gmail via SMTP).
 - filtres métier bien définis.
 
-Prochaines améliorations possibles : tests automatiques, modèle de notification dédié, envoi d'emails asynchrone.
+Prochaines améliorations possibles : tests automatiques, modèle de notification dédié, envoi d'emails asynchrone avec Celery.

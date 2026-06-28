@@ -20,6 +20,33 @@ export type Dossier = {
   inspecteur?: { id: number; username: string; full_name: string };
   traite?: boolean;
   comments_url?: string;
+  risk?: {
+    score_global?: number;
+    niveau_risque?: string;
+    score_employeur?: number;
+    score_declaration?: number;
+    score_recouvrement?: number;
+    score_controle?: number;
+    score_protocole?: number;
+  };
+  regles?: {
+    regles_declenchees?: string | string[] | Record<string, any>;
+    nb_regles?: number;
+    interactions_detectees?: string | string[] | Record<string, any>;
+    top_feature_1?: string;
+    top_feature_2?: string;
+    top_feature_3?: string;
+    recommandation_1?: string;
+  };
+  anomalie?: {
+    score_anomalie?: number;
+    niveau_anomalie?: string;
+    is_outlier_iforest?: boolean;
+    anomalie_top_1?: string;
+    anomalie_top_2?: string;
+    anomalie_top_3?: string;
+    recommandation_2?: string;
+  };
 };
 
 export type Commentaire = {

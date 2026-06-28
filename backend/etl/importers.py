@@ -48,17 +48,83 @@ class ExcelImporter:
     def __init__(self, filepath):
         self.filepath = filepath
 
-    def nettoyer_json_field(self, valeur, default_type):
-        if pd.isna(valeur) or not valeur:
-            return default_type()
-        if isinstance(valeur, (list, dict)):
-            return valeur
+    def normaliser_regles(self, valeur):
+        if pd.isna(valeur) or valeur is None or valeur == '':
+            return []
+
+        if isinstance(valeur, list):
+            return [str(item).strip() for item in valeur if str(item).strip()]
+
+        if isinstance(valeur, dict):
+            return [str(key).strip() for key in valeur.keys() if str(key).strip()]
+
         if isinstance(valeur, str):
-            try:
-                return json.loads(valeur.replace("'", '"'))
-            except:
-                return default_type()
-        return default_type()
+            text = valeur.strip()
+            if text in ['', '[]', '{}', 'null', 'nan']:
+                return []
+
+            if text.startswith('[') or text.startswith('{'):
+                try:
+                    parsed = json.loads(text.replace("'", '"'))
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                    if isinstance(parsed, dict):
+                        return [str(key).strip() for key in parsed.keys() if str(key).strip()]
+                except Exception:
+                    pass
+
+            return [item.strip() for item in text.split('|') if item.strip()]
+
+        return []
+
+    def normaliser_interactions(self, valeur):
+        if pd.isna(valeur) or valeur is None or valeur == '':
+            return {}
+
+        if isinstance(valeur, dict):
+            return {
+                str(key).strip(): value
+                for key, value in valeur.items()
+                if str(key).strip()
+            }
+
+        if isinstance(valeur, list):
+            return {
+                str(item).strip(): True
+                for item in valeur
+                if str(item).strip()
+            }
+
+        if isinstance(valeur, str):
+            text = valeur.strip()
+            if text in ['', '[]', '{}', 'null', 'nan']:
+                return {}
+
+            if text.startswith('[') or text.startswith('{'):
+                try:
+                    parsed = json.loads(text.replace("'", '"'))
+                    if isinstance(parsed, dict):
+                        return {
+                            str(key).strip(): value
+                            for key, value in parsed.items()
+                            if str(key).strip()
+                        }
+                    if isinstance(parsed, list):
+                        return {
+                            str(item).strip(): True
+                            for item in parsed
+                            if str(item).strip()
+                        }
+                except Exception:
+                    pass
+
+            return {
+                item.strip(): True
+                for item in text.split('|')
+                if item.strip()
+            }
+
+        return {}
 
     def run(self):
         df = pd.read_excel(self.filepath, engine='openpyxl')
@@ -114,10 +180,17 @@ class ExcelImporter:
         for _, row in df.iterrows():
             row_dict = row.to_dict()
             champs = {k: v for k, v in row_dict.items() if k in valid_cols}
-            
-            champs['regles_declenchees'] = self.nettoyer_json_field(champs.get('regles_declenchees'), list)
-            champs['interactions_detectees'] = self.nettoyer_json_field(champs.get('interactions_detectees'), dict)
-            
+
+            regles = self.normaliser_regles(champs.get('regles_declenchees'))
+            interactions = self.normaliser_interactions(champs.get('interactions_detectees'))
+
+            champs['regles_declenchees'] = regles
+            champs['interactions_detectees'] = interactions
+
+            # Les compteurs métier doivent refléter les données normalisées
+            champs['nb_regles'] = max(champs.get('nb_regles', 0) or 0, len(regles))
+            champs['nb_interactions'] = max(champs.get('nb_interactions', 0) or 0, len(interactions))
+
             dossiers_a_creer.append(Dossier(**champs))
 
         with transaction.atomic():

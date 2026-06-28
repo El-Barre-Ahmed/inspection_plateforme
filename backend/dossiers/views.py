@@ -167,7 +167,7 @@ class DossierViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
                 from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
                 # send_mail will use Django EMAIL_* settings; swallow errors
                 if from_email:
-                    send_mail(subject, message, from_email, [inspector_email], fail_silently=True)
+                    send_mail(subject, message, from_email, [inspector_email], fail_silently= False )
         except Exception:
             pass
         serializer = DossierDetailSerializer(dossier, context={'request': request})
