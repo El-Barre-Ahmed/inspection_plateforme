@@ -23,3 +23,19 @@ frontend/dist/
 *~
 *.pem
 deploy.sh
+# Excel Data
+backend/data/cnss_hybrid.xlsx
+
+# Local Scripts
+*.sh
+
+# Documentation Files (Local only)
+COMPLETION_REPORT.md
+DEPLOYMENT.md
+FINAL_CHECKLIST.md
+INDEX.md
+QUICK_START.md
+RESTRUCTURING_SUMMARY.md
+START_HERE.md
+STRUCTURE.md
+workflow.md
