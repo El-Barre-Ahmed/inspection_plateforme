@@ -1,4 +1,4 @@
-# Inspection Platform - CNSS
+# Inspection Platform - CNSS (dans Le Cadre Du Stage PFE) 
 
 Plateforme de gestion des dossiers d'inspection pour la CNSS avec dashboard analytique, gestion des inspecteurs et suivi des anomalies.
 
