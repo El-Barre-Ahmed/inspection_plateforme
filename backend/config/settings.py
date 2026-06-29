@@ -63,7 +63,11 @@ MIDDLEWARE = [
 ]
 
 # Autoriser les requêtes depuis l'extérieur (utile pour le frontend React/Vue)
-CORS_ALLOW_ALL_ORIGINS = True 
+"CORS_ALLOW_ALL_ORIGINS = True "
+
+CORS_ALLOWED_ORIGINS = [
+    "https://inspection-frontend-g6h0.onrender.com",
+]
 
 ROOT_URLCONF = 'config.urls' # Assurez-vous que cela pointe vers votre fichier d'urls principal
 
