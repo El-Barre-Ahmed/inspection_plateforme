@@ -128,24 +128,17 @@ class DossierViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
             pass
 
         try:
-            inspector_email = inspecteur.email
-            if inspector_email:
-                subject = f"Nouvelle assignation: Dossier #{dossier.id}"
-                message = (
-                    f"Bonjour {inspecteur.get_full_name() or inspecteur.username},\n\n"
-                    f"Vous avez été assigné au dossier #{dossier.id} ({dossier.forme_nom}).\n"
-                    f"Accéder: /dossiers/{dossier.id}\n\nCordialement,\nCNSS"
-                )
-                from_email = settings.DEFAULT_FROM_EMAIL
-                thread = threading.Thread(
-                    target=_send_assignment_email,
-                    args=(subject, message, from_email, inspector_email)
-                )
-                thread.daemon = True
-                thread.start()
-        except Exception:
-            pass
-
+    inspector_email = inspecteur.email
+    if inspector_email:
+        subject = f"Nouvelle assignation: Dossier #{dossier.id}"
+        message = (
+            f"Bonjour {inspecteur.get_full_name() or inspecteur.username},\n\n"
+            f"Vous avez été assigné au dossier #{dossier.id} ({dossier.forme_nom}).\n"
+            f"Accéder: /dossiers/{dossier.id}\n\nCordialement,\nCNSS"
+        )
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [inspector_email], fail_silently=True)
+    except Exception:
+        pass
         serializer = DossierDetailSerializer(dossier, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
