@@ -89,12 +89,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # --- 4. BASE DE DONNÉES ---
 # Support Render (DATABASE_URL), PostgreSQL local et SQLite (développement)
 if os.getenv('DATABASE_URL'):
-    DATABASES = {
-        'default': dj_database_url.config(
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-    }
+   DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL')
+    )
+}
 elif os.getenv('DB_ENGINE') == 'django.db.backends.postgresql':
     DATABASES = {
         'default': {
