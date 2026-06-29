@@ -127,23 +127,25 @@ class DossierViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
         except Exception:
             pass
 
-        try:
-            inspector_email = inspecteur.email
-            if inspector_email:
-                subject = f"Nouvelle assignation: Dossier #{dossier.id}"
-                message = (
-                    f"Bonjour {inspecteur.get_full_name() or inspecteur.username},\n\n"
-                    f"Vous avez été assigné au dossier #{dossier.id} ({dossier.forme_nom}).\n"
-                    f"Accéder: /dossiers/{dossier.id}\n\nCordialement,\nCNSS"
-                )
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [inspector_email], fail_silently=True)
-        except Exception:
-            pass
-
-        serializer = DossierDetailSerializer(dossier, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=['post'], url_path='marquer-traite')
+    try:
+    inspector_email = inspecteur.email
+    if inspector_email:
+        import resend
+        resend.api_key = settings.RESEND_API_KEY
+        resend.Emails.send({
+            "from": "CNSS <onboarding@resend.dev>",
+            "to": [inspector_email],
+            "subject": f"Nouvelle assignation: Dossier #{dossier.id}",
+            "text": (
+                f"Bonjour {inspecteur.get_full_name() or inspecteur.username},\n\n"
+                f"Vous avez été assigné au dossier #{dossier.id} ({dossier.forme_nom}).\n\n"
+                f"Accéder directement au dossier :\n"
+                f"https://inspection-frontend-g6h0.onrender.com/dossiers/{dossier.id}\n\n"
+                f"Cordialement,\nCNSS"
+            )
+        })
+    except Exception:
+        pass
     def marquer_traite(self, request, pk=None):
         dossier = self.get_object()
         profile = getattr(request.user, 'profile', None)
