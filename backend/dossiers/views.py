@@ -136,7 +136,7 @@ class DossierViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
                     f"Vous avez été assigné au dossier #{dossier.id} ({dossier.forme_nom}).\n"
                     f"Accéder: /dossiers/{dossier.id}\n\nCordialement,\nCNSS"
                 )
-                from_email = settings.EMAIL_HOST_USER
+                from_email = settings.DEFAULT_FROM_EMAIL
                 thread = threading.Thread(
                     target=_send_assignment_email,
                     args=(subject, message, from_email, inspector_email)
