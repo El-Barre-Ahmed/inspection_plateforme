@@ -8,6 +8,8 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
+
+// @ts-ignore
 const apiHost = import.meta.env.VITE_API_URL || '';
 const baseUrl = `${apiHost}/api`;
 
