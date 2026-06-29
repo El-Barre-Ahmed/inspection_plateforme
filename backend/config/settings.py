@@ -70,6 +70,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://inspection-frontend-g6h0.onrender.com",
 ]
 
+CORS_ALLOW_CREDENTIALS = True
+
 ROOT_URLCONF = 'config.urls' # Assurez-vous que cela pointe vers votre fichier d'urls principal
 
 TEMPLATES = [
