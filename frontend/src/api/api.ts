@@ -8,8 +8,8 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
-
-const baseUrl = '/api';
+const apiHost = import.meta.env.VITE_API_URL || '';
+const baseUrl = `${apiHost}/api`;
 
 export interface ApiRequestOptions extends RequestInit {
   suppressGlobalError?: boolean;
