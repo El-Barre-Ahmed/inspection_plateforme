@@ -24,10 +24,14 @@ from django.conf import settings
 
 
 def _send_assignment_email(subject, message, from_email, recipient):
+    import logging
+    logger = logging.getLogger(__name__)
     try:
-        send_mail(subject, message, from_email, [recipient], fail_silently=True)
-    except Exception:
-        pass
+        logger.info(f"Sending email to {recipient} from {from_email}")
+        send_mail(subject, message, from_email, [recipient], fail_silently=False)
+        logger.info(f"Email sent successfully to {recipient}")
+    except Exception as e:
+        logger.error(f"Email error: {str(e)}")
 
 
 class DossierViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
